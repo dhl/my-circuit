@@ -15,8 +15,9 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # The xark this project is made with (its `xark.toml`).
-  XARK_CLI_VERSION: 0.5.0
+  # xark 0.5 is not published: the CLI and the crates (`.cargo/config.toml`)
+  # come from this commit. Keep the two in sync.
+  XARK_GIT_REV: ecc0cad57fcb3967230863d90a40503939c97573
 
 jobs:
   test:
@@ -34,11 +35,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/xark
-          key: xark-${{ runner.os }}-${{ env.XARK_CLI_VERSION }}
+          key: xark-${{ runner.os }}-${{ env.XARK_GIT_REV }}
 
-      - name: Install xark
+      - name: Install xark (0.5 is not on crates.io yet)
         if: steps.tools.outputs.cache-hit != 'true'
-        run: cargo install xark-cli --version "$XARK_CLI_VERSION" --locked
+        # From the runner's temp dir: `cargo install` would otherwise load this
+        # project's `.cargo/config.toml` and report its patches as unused.
+        working-directory: ${{ runner.temp }}
+        run: cargo install --git https://github.com/blueshift-gg/xark --rev "$XARK_GIT_REV" xark-cli --locked
 
       # The committed keys and generated clients are what this source builds.
       - name: xark build --check

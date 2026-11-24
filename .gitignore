@@ -2,3 +2,7 @@ target/
 node_modules/
 # Rebuilt from the circuit when it's missing: the keys beside it are committed.
 keys/*/r1cs.stream
+
+# The xark checkout the program workflow builds @blueshift-gg/xark from while 0.5
+# is unpublished.
+/.xark/

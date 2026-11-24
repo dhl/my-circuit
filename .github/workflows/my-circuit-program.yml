@@ -16,8 +16,9 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   CARGO_BUILD_SBF_VERSION: 4.2.0
-  # The xark this project is made with (its `xark.toml`).
-  XARK_CLI_VERSION: 0.5.0
+  # xark 0.5 is not published: the CLI, the crates (`.cargo/config.toml`) and
+  # the npm package come from this commit. Keep them in sync with that file.
+  XARK_GIT_REV: ecc0cad57fcb3967230863d90a40503939c97573
 
 # This workflow is about one program. The workspace may hold programs from other
 # frameworks, whose build and test commands differ: each program has its own
@@ -38,11 +39,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/xark
-          key: xark-${{ runner.os }}-${{ env.XARK_CLI_VERSION }}
+          key: xark-${{ runner.os }}-${{ env.XARK_GIT_REV }}
 
-      - name: Install xark
+      - name: Install xark (0.5 is not on crates.io yet)
         if: steps.xark.outputs.cache-hit != 'true'
-        run: cargo install xark-cli --version "$XARK_CLI_VERSION" --locked
+        # From the runner's temp dir: `cargo install` would otherwise load this
+        # project's `.cargo/config.toml` and report its patches as unused.
+        working-directory: ${{ runner.temp }}
+        run: cargo install --git https://github.com/blueshift-gg/xark --rev "$XARK_GIT_REV" xark-cli --locked
 
       # The generated test's `circuit()` reads the circuit's `target/xark/`
       # artifacts, which are not committed: build them before the program tests.
@@ -59,14 +63,45 @@ jobs:
 
       - name: Install cargo-build-sbf
         if: steps.tools.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
         run: cargo install cargo-build-sbf --version "$CARGO_BUILD_SBF_VERSION" --locked
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      # @blueshift-gg/xark 0.5 is not on npm yet, and its `dist/` is built, not
+      # committed: build the package from the same xark commit as the CLI and
+      # install it from that directory.
+      - name: Check out xark for its TypeScript package
+        uses: actions/checkout@v4
+        with:
+          repository: blueshift-gg/xark
+          ref: ${{ env.XARK_GIT_REV }}
+          path: .xark
+
+      - name: Cached @blueshift-gg/xark
+        id: xark-npm
+        uses: actions/cache@v4
+        with:
+          path: .xark/crates/wasm/dist
+          key: xark-npm-${{ runner.os }}-${{ env.XARK_GIT_REV }}
+
+      - name: Install wasm-pack
+        if: steps.xark-npm.outputs.cache-hit != 'true'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Build @blueshift-gg/xark from source
+        if: steps.xark-npm.outputs.cache-hit != 'true'
+        working-directory: .xark
+        run: cargo xtask wasm nodejs
+
       - name: Install the TypeScript tests' packages
-        run: npm install
+        run: |
+          npm pkg set 'devDependencies.@blueshift-gg/xark=file:.xark/crates/wasm'
+          npm install
 
       - name: Build the program
         shell: bash
