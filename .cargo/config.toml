@@ -1,0 +1,24 @@
+# xark 0.5 is not published yet, so Cargo takes the xark crates from this commit
+# of the xark repository. The workflows install the `xark` CLI and build the npm
+# package from the same commit: their `XARK_GIT_REV` has to match the `rev` below.
+#
+# It is the tip of xark's `decouple-programs` branch, the CLI this project was
+# generated with. The `xark-0.5` branch still runs `cargo build-sbf` from
+# `xark build --check` (and builds programs in `xark test`), which the `ci`
+# workflow has no Solana toolchain for: point this there once its CLI has the
+# circuit-only change too.
+#
+# When 0.5 is on crates.io and npm, delete this file and the workflows' install
+# steps, and go back to `cargo install xark-cli --version 0.5.0` and plain
+# `npm install`.
+#
+# For local work on xark itself, point these at a checkout instead of git (it must
+# be outside this directory: a path patch inside it is taken as a workspace member):
+#
+#   xark = { path = "/path/to/xark/crates/lang" }
+#   xark-verifier = { path = "/path/to/xark/crates/verifier" }
+#   xark-prover = { path = "/path/to/xark/crates/prover" }
+[patch.crates-io]
+xark = { git = "https://github.com/blueshift-gg/xark", rev = "ecc0cad57fcb3967230863d90a40503939c97573" }
+xark-verifier = { git = "https://github.com/blueshift-gg/xark", rev = "ecc0cad57fcb3967230863d90a40503939c97573" }
+xark-prover = { git = "https://github.com/blueshift-gg/xark", rev = "ecc0cad57fcb3967230863d90a40503939c97573" }
